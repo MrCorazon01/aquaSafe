@@ -1,10 +1,15 @@
 package com.ept.dic1.aquasafe.views.dashboard;
 
-
+import com.ept.dic1.aquasafe.data.SampleDevice;
 import com.ept.dic1.aquasafe.views.MainLayout;
-import com.ept.dic1.aquasafe.views.dashboard.ServiceHealth.Status;
+import com.ept.dic1.aquasafe.views.dispositifs.DeviceHealth;
+import com.ept.dic1.aquasafe.views.dispositifs.DeviceHealth.Status;
+import com.ept.dic1.aquasafe.views.dispositifs.DeviceService;
+import com.ept.dic1.aquasafe.views.dispositifs.DevicesView;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.board.Board;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.charts.Chart;
 import com.vaadin.flow.component.charts.model.*;
 import com.vaadin.flow.component.grid.ColumnTextAlign;
@@ -28,19 +33,27 @@ import com.vaadin.flow.theme.lumo.LumoUtility.FontWeight;
 import com.vaadin.flow.theme.lumo.LumoUtility.Margin;
 import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
 import com.vaadin.flow.theme.lumo.LumoUtility.TextColor;
+import jakarta.annotation.security.RolesAllowed;
+import org.springframework.data.domain.Page;
+
+import java.util.List;
 
 @PageTitle("Dashboard")
 @Route(value = "dashboard", layout = MainLayout.class)
+@RolesAllowed({"ADMIN", "USER"})
 public class DashboardView extends Main {
-
-    public DashboardView() {
+    private final DeviceService deviceService;
+    public DashboardView(DeviceService deviceService) {
+        this.deviceService = deviceService;
         addClassName("dashboard-view");
 
         Board board = new Board();
-        board.addRow(createHighlight("Current users", "745", 33.7), createHighlight("View events", "54.6k", -112.45),
-                createHighlight("Conversion rate", "18%", 3.9), createHighlight("Custom metric", "-123.45", 0.0));
-        board.addRow(createViewEvents());
-        board.addRow(createServiceHealth(), createResponseTimes());
+        board.addRow(createHighlight("Nombre total de dispositifs installés", "150", 0.0),
+                createHighlight("Taux de contamination global", "12%", 5.0),
+                createHighlight("Niveau moyen de batterie des dispositifs", "75%", -2.0),
+                createHighlight("Dispositifs signalant une contamination", "10", 3.2));
+        board.addRow(createRecentEvents());
+        board.addRow(createDeviceHealth(), createDeviceHealthDistribution());
         add(board);
     }
 
@@ -78,14 +91,14 @@ public class DashboardView extends Main {
         return layout;
     }
 
-    private Component createViewEvents() {
+    private Component createRecentEvents() {
         // Header
         Select year = new Select();
-        year.setItems("2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021");
-        year.setValue("2021");
+        year.setItems("2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024");
+        year.setValue("2023");
         year.setWidth("100px");
 
-        HorizontalLayout header = createHeader("View events", "City/month");
+        HorizontalLayout header = createHeader("Événements récents", "Ville/mois");
         header.add(year);
 
         // Chart
@@ -97,88 +110,101 @@ public class DashboardView extends Main {
         xAxis.setCategories("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec");
         conf.addxAxis(xAxis);
 
-        conf.getyAxis().setTitle("Values");
+        conf.getyAxis().setTitle("Mesures");
 
         PlotOptionsAreaspline plotOptions = new PlotOptionsAreaspline();
         plotOptions.setPointPlacement(PointPlacement.ON);
         plotOptions.setMarker(new Marker(false));
         conf.addPlotOptions(plotOptions);
 
-        conf.addSeries(new ListSeries("Berlin", 189, 191, 291, 396, 501, 403, 609, 712, 729, 942, 1044, 1247));
-        conf.addSeries(new ListSeries("London", 138, 246, 248, 348, 352, 353, 463, 573, 778, 779, 885, 887));
-        conf.addSeries(new ListSeries("New York", 65, 65, 166, 171, 293, 302, 308, 317, 427, 429, 535, 636));
-        conf.addSeries(new ListSeries("Tokyo", 0, 11, 17, 123, 130, 142, 248, 349, 452, 454, 458, 462));
+        // Exemple : Utilisez de vraies données de mesures d'eau
+        conf.addSeries(new ListSeries("Conductivité", 3.50, 3.60, 3.80, 4.00, 4.10, 3.90, 3.70, 3.60, 3.50, 3.70, 3.90, 4.10));
+        conf.addSeries(new ListSeries("Température", 15, 16, 17, 18, 20, 21, 22, 23, 22, 20, 18, 16));
+        conf.addSeries(new ListSeries("pH", 7.2, 7.0, 7.5, 7.8, 7.6, 7.4, 7.2, 7.1, 7.0, 7.3, 7.5, 7.7));
+        conf.addSeries(new ListSeries("Turbidité", 5, 6, 8, 10, 12, 9, 7, 6, 5, 7, 9, 11));
 
         // Add it all together
-        VerticalLayout viewEvents = new VerticalLayout(header, chart);
-        viewEvents.addClassName(Padding.LARGE);
-        viewEvents.setPadding(false);
-        viewEvents.setSpacing(false);
-        viewEvents.getElement().getThemeList().add("spacing-l");
-        return viewEvents;
+        VerticalLayout recentEvents = new VerticalLayout(header, chart);
+        recentEvents.addClassName(Padding.LARGE);
+        recentEvents.setPadding(false);
+        recentEvents.setSpacing(false);
+        recentEvents.getElement().getThemeList().add("spacing-l");
+        return recentEvents;
     }
 
-    private Component createServiceHealth() {
+
+
+    private Component createDeviceHealth() {
         // Header
-        HorizontalLayout header = createHeader("Service health", "Input / output");
+        HorizontalLayout header = createHeader("État de santé des Dispositifs", "Métriques des dispositifs");
+        Button button = new Button(new Icon(VaadinIcon.OPTION_A));
+        button.setText("Dispositifs");
+        button.addClickListener(e -> UI.getCurrent().navigate(DevicesView.class));
+        header.add(button);
 
         // Grid
-        Grid<ServiceHealth> grid = new Grid();
+        Grid<SampleDevice> grid = new Grid<>();
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.setAllRowsVisible(true);
 
-        grid.addColumn(new ComponentRenderer<>(serviceHealth -> {
+        int page = 0;
+        int pageSize = 10;
+
+        Page<SampleDevice> devicesPage = deviceService.getAllDevices(page, pageSize);
+        List<SampleDevice> devices = devicesPage.getContent();
+
+        grid.addColumn(new ComponentRenderer<>(device -> {
             Span status = new Span();
-            String statusText = getStatusDisplayName(serviceHealth);
+            String statusText = getStatusDisplayName(device);
             status.getElement().setAttribute("aria-label", "Status: " + statusText);
             status.getElement().setAttribute("title", "Status: " + statusText);
-            status.getElement().getThemeList().add(getStatusTheme(serviceHealth));
+            status.getElement().getThemeList().add(getStatusTheme(device));
             return status;
         })).setHeader("").setFlexGrow(0).setAutoWidth(true);
-        grid.addColumn(ServiceHealth::getCity).setHeader("City").setFlexGrow(1);
-        grid.addColumn(ServiceHealth::getInput).setHeader("Input").setAutoWidth(true).setTextAlign(ColumnTextAlign.END);
-        grid.addColumn(ServiceHealth::getOutput).setHeader("Output").setAutoWidth(true)
+        grid.addColumn(SampleDevice::getTrackingNumber).setHeader("Dispositif ID").setFlexGrow(1);
+        grid.addColumn(device -> {
+                    DeviceHealth deviceHealth = new DeviceHealth(device);
+                    return deviceHealth.getContaminantLevel();
+                }).setHeader("Niveau de Contamination").setAutoWidth(true)
+                .setTextAlign(ColumnTextAlign.END);
+        grid.addColumn(SampleDevice::getBatteryLevel).setHeader("Niveau de Batterie").setAutoWidth(true)
                 .setTextAlign(ColumnTextAlign.END);
 
-        grid.setItems(new ServiceHealth(Status.EXCELLENT, "Münster", 324, 1540),
-                new ServiceHealth(Status.OK, "Cluj-Napoca", 311, 1320),
-                new ServiceHealth(Status.FAILING, "Ciudad Victoria", 300, 1219));
+        grid.setItems(devices);
 
         // Add it all together
-        VerticalLayout serviceHealth = new VerticalLayout(header, grid);
-        serviceHealth.addClassName(Padding.LARGE);
-        serviceHealth.setPadding(false);
-        serviceHealth.setSpacing(false);
-        serviceHealth.getElement().getThemeList().add("spacing-l");
-        return serviceHealth;
+        VerticalLayout deviceHealth = new VerticalLayout(header, grid);
+        deviceHealth.addClassName(Padding.LARGE);
+        deviceHealth.setPadding(false);
+        deviceHealth.setSpacing(false);
+        deviceHealth.getElement().getThemeList().add("spacing-l");
+        return deviceHealth;
     }
 
-    private Component createResponseTimes() {
-        HorizontalLayout header = createHeader("Response times", "Average across all systems");
+    private Component createDeviceHealthDistribution() {
+        HorizontalLayout header = createHeader("Répartition des Dispositifs par État de Santé", "Vue d'ensemble de la santé des dispositifs");
 
         // Chart
         Chart chart = new Chart(ChartType.PIE);
         Configuration conf = chart.getConfiguration();
         conf.getChart().setStyledMode(true);
-        chart.setThemeName("gradient");
+
 
         DataSeries series = new DataSeries();
-        series.add(new DataSeriesItem("System 1", 12.5));
-        series.add(new DataSeriesItem("System 2", 12.5));
-        series.add(new DataSeriesItem("System 3", 12.5));
-        series.add(new DataSeriesItem("System 4", 12.5));
-        series.add(new DataSeriesItem("System 5", 12.5));
-        series.add(new DataSeriesItem("System 6", 12.5));
+        series.add(new DataSeriesItem("Excellent", 30));
+        series.add(new DataSeriesItem("OK", 60));
+        series.add(new DataSeriesItem("En échec", 10));
         conf.addSeries(series);
 
         // Add it all together
-        VerticalLayout serviceHealth = new VerticalLayout(header, chart);
-        serviceHealth.addClassName(Padding.LARGE);
-        serviceHealth.setPadding(false);
-        serviceHealth.setSpacing(false);
-        serviceHealth.getElement().getThemeList().add("spacing-l");
-        return serviceHealth;
+        VerticalLayout deviceHealthDistribution = new VerticalLayout(header, chart);
+        deviceHealthDistribution.addClassName(Padding.LARGE);
+        deviceHealthDistribution.setPadding(false);
+        deviceHealthDistribution.setSpacing(false);
+        deviceHealthDistribution.getElement().getThemeList().add("spacing-l");
+        return deviceHealthDistribution;
     }
+
 
     private HorizontalLayout createHeader(String title, String subtitle) {
         H2 h2 = new H2(title);
@@ -198,12 +224,13 @@ public class DashboardView extends Main {
         return header;
     }
 
-    private String getStatusDisplayName(ServiceHealth serviceHealth) {
-        Status status = serviceHealth.getStatus();
+    private String getStatusDisplayName(SampleDevice device) {
+        DeviceHealth deviceHealth = new DeviceHealth(device);
+        Status status = deviceHealth.getStatus();
         if (status == Status.OK) {
             return "Ok";
         } else if (status == Status.FAILING) {
-            return "Failing";
+            return "Échec";
         } else if (status == Status.EXCELLENT) {
             return "Excellent";
         } else {
@@ -211,8 +238,9 @@ public class DashboardView extends Main {
         }
     }
 
-    private String getStatusTheme(ServiceHealth serviceHealth) {
-        Status status = serviceHealth.getStatus();
+    private String getStatusTheme(SampleDevice device) {
+        DeviceHealth deviceHealth = new DeviceHealth(device);
+        Status status = deviceHealth.getStatus();
         String theme = "badge primary small";
         if (status == Status.EXCELLENT) {
             theme += " success";

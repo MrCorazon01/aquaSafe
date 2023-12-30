@@ -1,6 +1,7 @@
 package com.ept.dic1.aquasafe;
 
-import com.ept.dic1.aquasafe.data.SamplePersonRepository;
+import com.ept.dic1.aquasafe.data.SampleDevice;
+import com.ept.dic1.aquasafe.data.SampleDeviceRepository;
 import com.vaadin.flow.component.page.AppShellConfigurator;
 import com.vaadin.flow.theme.Theme;
 import com.vaadin.flow.theme.lumo.Lumo;
@@ -28,7 +29,7 @@ public class Application implements AppShellConfigurator {
 
     @Bean
     SqlDataSourceScriptDatabaseInitializer dataSourceScriptDatabaseInitializer(DataSource dataSource,
-            SqlInitializationProperties properties, SamplePersonRepository repository) {
+            SqlInitializationProperties properties, SampleDeviceRepository repository) {
         // This bean ensures the database is only initialized when empty
         return new SqlDataSourceScriptDatabaseInitializer(dataSource, properties) {
             @Override
