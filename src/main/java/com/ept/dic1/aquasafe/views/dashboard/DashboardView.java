@@ -27,6 +27,7 @@ import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.RouteAlias;
 import com.vaadin.flow.theme.lumo.LumoUtility.BoxSizing;
 import com.vaadin.flow.theme.lumo.LumoUtility.FontSize;
 import com.vaadin.flow.theme.lumo.LumoUtility.FontWeight;
@@ -39,7 +40,8 @@ import org.springframework.data.domain.Page;
 import java.util.List;
 
 @PageTitle("Dashboard")
-@Route(value = "dashboard", layout = MainLayout.class)
+@Route(value = "", layout = MainLayout.class)
+@RouteAlias(value = "dashboard", layout = MainLayout.class)
 @RolesAllowed({"ADMIN", "USER"})
 public class DashboardView extends Main {
     private final DeviceService deviceService;
@@ -98,7 +100,7 @@ public class DashboardView extends Main {
         year.setValue("2023");
         year.setWidth("100px");
 
-        HorizontalLayout header = createHeader("Événements récents", "Ville/mois");
+        HorizontalLayout header = createHeader("Paramètres de Mesure", "mois");
         header.add(year);
 
         // Chart

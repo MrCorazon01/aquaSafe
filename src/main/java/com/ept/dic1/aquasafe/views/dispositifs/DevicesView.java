@@ -37,6 +37,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @PageTitle("Dispositifs")
 @Route(value = "dispositifs", layout = MainLayout.class)
@@ -89,7 +90,7 @@ public class DevicesView extends Div {
         return mobileFilters;
     }
 
-    public static class Filters extends Div implements Specification<SampleDevice> {
+    public class Filters extends Div implements Specification<SampleDevice> {
 
         private final TextField trackingNumber = new TextField("Tracking Number");
         private final Select<String> region = new Select<>();
@@ -98,7 +99,8 @@ public class DevicesView extends Div {
         private final DatePicker startDate = new DatePicker("Installation Date");
         private final DatePicker endDate = new DatePicker();
         Button addDeviceButton;
-        private final MultiSelectComboBox<String> parameters = new MultiSelectComboBox<>("Parameters");
+
+        private final Select<DeviceHealth.Status> statusFilter = new Select<>();
 
 
         public Filters(Runnable onSearch) {
@@ -107,10 +109,10 @@ public class DevicesView extends Div {
             addClassNames(LumoUtility.Padding.Horizontal.LARGE, LumoUtility.Padding.Vertical.MEDIUM,
                     LumoUtility.BoxSizing.BORDER);
 
-            // Set placeholder and options for parameters
-            parameters.setPlaceholder("Select Parameters");
-            parameters.setItems("Temperature", "Conductivity", "Turbidity", "pH");
-            parameters.addClassName("double-width");
+
+            statusFilter.setLabel("Status");
+            statusFilter.setItems(DeviceHealth.Status.EXCELLENT, DeviceHealth.Status.OK, DeviceHealth.Status.FAILING);
+            statusFilter.addClassName("double-width");
 
 
 
@@ -128,7 +130,7 @@ public class DevicesView extends Div {
                 region.clear();
                 startDate.clear();
                 endDate.clear();
-                parameters.clear();
+                statusFilter.clear();
                 onSearch.run();
             });
 
@@ -143,7 +145,7 @@ public class DevicesView extends Div {
             region.setLabel("Region");
             setRegionData(region);
 
-            add(trackingNumber, region, createDateRangeFilter(), parameters, addDeviceButton, actions);
+            add(trackingNumber, region, createDateRangeFilter(), statusFilter, addDeviceButton, actions);
         }
 
         private void setRegionData(Select<String> select) {
@@ -167,6 +169,9 @@ public class DevicesView extends Div {
             dateRangeComponent.addClassName(LumoUtility.Gap.XSMALL);
 
             return dateRangeComponent;
+        }
+        public DeviceHealth.Status getStatus() {
+            return statusFilter.getValue();
         }
 
         @Override
@@ -193,14 +198,23 @@ public class DevicesView extends Div {
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(criteriaBuilder.literal(endDate.getValue()),
                         root.get(databaseColumn)));
             }
-            if (!parameters.isEmpty()) {
-                String databaseColumn = "parameters"; // Update with the correct field name for parameters
-                List<Predicate> parameterPredicates = new ArrayList<>();
-                for (String parameter : parameters.getValue()) {
-                    parameterPredicates
-                            .add(criteriaBuilder.equal(criteriaBuilder.literal(parameter), root.get(databaseColumn)));
-                }
-                predicates.add(criteriaBuilder.or(parameterPredicates.toArray(Predicate[]::new)));
+
+            List<SampleDevice> devices = sampleDeviceService.getAll();
+
+            List<SampleDevice> devicesWithStatus = devices.stream()
+                    .filter(device -> {
+                        DeviceHealth deviceHealth = new DeviceHealth(device);
+                        DeviceHealth.Status status = deviceHealth.getStatus();
+                        return status.equals(statusFilter.getValue());
+                    })
+                    .collect(Collectors.toList());
+
+
+            if (!devicesWithStatus.isEmpty()) {
+                List<Predicate> statusPredicates = devicesWithStatus.stream()
+                        .map(device -> criteriaBuilder.equal(root.get("trackingNumber"), device.getTrackingNumber()))
+                        .collect(Collectors.toList());
+                predicates.add(criteriaBuilder.or(statusPredicates.toArray(new Predicate[0])));
             }
 
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
@@ -234,9 +248,23 @@ public class DevicesView extends Div {
                 filters).stream());
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
         grid.addClassNames(LumoUtility.Border.TOP, LumoUtility.BorderColor.CONTRAST_10);
+        grid.asSingleSelect().addValueChangeListener(event -> {
+            SampleDevice selectedDevice = event.getValue();
+            if (selectedDevice != null) {
+                navigateToDeviceDashboard(selectedDevice.getTrackingNumber());
+            }
+        });
+
 
         return grid;
     }
+
+    private void navigateToDeviceDashboard(String trackingNumber) {
+
+        String deviceDashboardURL = "device-dashboard/" + trackingNumber;
+        UI.getCurrent().navigate(deviceDashboardURL);
+    }
+
 
     private void navigateToAddDevice() {
         UI.getCurrent().navigate("ajouter-dispositif");

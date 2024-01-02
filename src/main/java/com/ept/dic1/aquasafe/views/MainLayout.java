@@ -4,7 +4,6 @@ import com.ept.dic1.aquasafe.security.SecurityService;
 import com.ept.dic1.aquasafe.views.about.AboutView;
 import com.ept.dic1.aquasafe.views.dashboard.DashboardView;
 import com.ept.dic1.aquasafe.views.dispositifs.DevicesView;
-import com.ept.dic1.aquasafe.views.home.HomeView;
 import com.ept.dic1.aquasafe.views.map.MapView;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
@@ -138,7 +137,6 @@ public class MainLayout extends AppLayout {
     private SideNav createNavigation() {
         SideNav nav = new SideNav();
 
-        nav.addItem(new SideNavItem("Home", HomeView.class, LineAwesomeIcon.HOME_SOLID.create()));
         nav.addItem(new SideNavItem("Dashboard", DashboardView.class, LineAwesomeIcon.CHART_AREA_SOLID.create()));
         nav.addItem(new SideNavItem("Map", MapView.class, LineAwesomeIcon.MAP.create()));
         nav.addItem(

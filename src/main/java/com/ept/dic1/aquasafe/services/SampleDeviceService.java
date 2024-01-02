@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -21,6 +22,8 @@ public class SampleDeviceService {
     public Optional<SampleDevice> get(Long id) {
         return repository.findById(id);
     }
+
+
 
     public SampleDevice get(String trackingNumber) {
         return repository.findByTrackingNumber(trackingNumber);
@@ -47,4 +50,7 @@ public class SampleDeviceService {
         return (int) repository.count();
     }
 
+    public List<SampleDevice> getAll() {
+       return repository.findAll();
+    }
 }

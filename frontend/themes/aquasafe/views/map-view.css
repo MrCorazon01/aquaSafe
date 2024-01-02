@@ -18,6 +18,10 @@
   text-align: left;
 }
 
+.card-selected{
+    background-color: #223a5a !important;
+}
+
 @media screen and (max-width: 768px) {
  .map-view {
     flex-direction: column;
